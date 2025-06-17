@@ -1,22 +1,17 @@
 from flask import Blueprint, redirect, request, url_for, current_app
 from requests import post
 from flask_login import login_user, logout_user, login_required
-
 from app import db, login
 from app.models import User
 
-# Blueprint para autenticación con MercadoLibre
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-# Callback para cargar el usuario actual\@login.user_loader
+@login.user_loader
 def load_user(user_id):
     return User.query.get(user_id)
 
 @auth_bp.route('/login')
 def ml_login():
-    """
-    Redirige al usuario al flujo OAuth de MercadoLibre.
-    """
     client_id = current_app.config['ML_CLIENT_ID']
     redirect_uri = current_app.config['ML_REDIRECT_URI']
     auth_url = (
@@ -27,9 +22,6 @@ def ml_login():
 
 @auth_bp.route('/callback')
 def ml_callback():
-    """
-    Recibe el código de autorización, intercambia tokens, crea/actualiza el usuario y lo loguea.
-    """
     code = request.args.get('code')
     token_url = 'https://api.mercadolibre.com/oauth/token'
     payload = {
@@ -40,28 +32,62 @@ def ml_callback():
         'redirect_uri': current_app.config['ML_REDIRECT_URI']
     }
     resp = post(token_url, data=payload).json()
-
-    # Obtener o crear el usuario
     user = User.query.filter_by(username=str(resp.get('user_id'))).first()
     if not user:
         user = User(username=str(resp.get('user_id')))
-
-    # Almacenar tokens
     user.ml_access_token = resp.get('access_token')
     user.ml_refresh_token = resp.get('refresh_token')
-
     db.session.add(user)
     db.session.commit()
-
-    # Iniciar sesión del usuario
     login_user(user)
     return redirect(url_for('main.dashboard'))
 
 @auth_bp.route('/logout')
 @login_required
 def ml_logout():
-    """
-    Cierra la sesión del usuario.
-    """
     logout_user()
     return redirect(url_for('main.index'))
+```
+
+## /app/routes.py  
+**Modificado:** Sí (asegurar main_bp exportado)  
+```python
+from flask import Blueprint, jsonify, url_for
+from flask_login import login_required, current_user
+from rq import get_current_job
+from app import db, redis_conn, task_queue
+from app.tasks import fetch_store_stats
+
+main_bp = Blueprint('main', __name__)
+
+@main_bp.route('/')
+def index():
+    return jsonify({'message': 'VelozML backend completo funcionando'})
+
+@main_bp.route('/health')
+def health():
+    try:
+        db.session.execute('SELECT 1')
+        redis_conn.ping()
+        return jsonify({'status': 'healthy'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'detail': str(e)}), 500
+
+@main_bp.route('/dashboard')
+@login_required
+def dashboard():
+    job = task_queue.enqueue(fetch_store_stats, current_user.id)
+    return jsonify({
+        'job_id': job.get_id(),
+        'status_url': url_for('main.task_status', job_id=job.get_id(), _external=True)
+    })
+
+@main_bp.route('/status/<job_id>')
+@login_required
+def task_status(job_id):
+    job = get_current_job()
+    return jsonify({
+        'job_id': job_id,
+        'status': job.get_status(),
+        'result': job.result
+    })
