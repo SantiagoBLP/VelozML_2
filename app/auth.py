@@ -1,3 +1,24 @@
+import uuid
+from flask_login import UserMixin
+from sqlalchemy.dialects.postgresql import UUID
+from app import db
+
+class User(db.Model, UserMixin):
+    id = db.Column(UUID(as_uuid=True), default=uuid.uuid4, primary_key=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    ml_access_token = db.Column(db.String, nullable=True)
+    ml_refresh_token = db.Column(db.String, nullable=True)
+
+class StoreStat(db.Model):
+    id = db.Column(UUID(as_uuid=True), default=uuid.uuid4, primary_key=True)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user.id'), nullable=False)
+    total_sales = db.Column(db.Integer, default=0)
+    last_updated = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+```
+
+## /app/auth.py  
+**Modificado:** Sí (revisión completa de rutas y corrección de indentación)  
+```python
 from flask import Blueprint, redirect, request, url_for, current_app
 from requests import post
 from flask_login import login_user, logout_user, login_required
@@ -47,47 +68,3 @@ def ml_callback():
 def ml_logout():
     logout_user()
     return redirect(url_for('main.index'))
-```
-
-## /app/routes.py  
-**Modificado:** Sí (asegurar main_bp exportado)  
-```python
-from flask import Blueprint, jsonify, url_for
-from flask_login import login_required, current_user
-from rq import get_current_job
-from app import db, redis_conn, task_queue
-from app.tasks import fetch_store_stats
-
-main_bp = Blueprint('main', __name__)
-
-@main_bp.route('/')
-def index():
-    return jsonify({'message': 'VelozML backend completo funcionando'})
-
-@main_bp.route('/health')
-def health():
-    try:
-        db.session.execute('SELECT 1')
-        redis_conn.ping()
-        return jsonify({'status': 'healthy'})
-    except Exception as e:
-        return jsonify({'status': 'error', 'detail': str(e)}), 500
-
-@main_bp.route('/dashboard')
-@login_required
-def dashboard():
-    job = task_queue.enqueue(fetch_store_stats, current_user.id)
-    return jsonify({
-        'job_id': job.get_id(),
-        'status_url': url_for('main.task_status', job_id=job.get_id(), _external=True)
-    })
-
-@main_bp.route('/status/<job_id>')
-@login_required
-def task_status(job_id):
-    job = get_current_job()
-    return jsonify({
-        'job_id': job_id,
-        'status': job.get_status(),
-        'result': job.result
-    })
