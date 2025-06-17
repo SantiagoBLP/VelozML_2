@@ -1,7 +1,7 @@
 Flask==3.1.1
 Flask-SQLAlchemy==3.0.3
-Flask-Login==0.6.3  # versión compatible con Werkzeug 3.x
-psycopg2-binary==2.9.6
+Flask-Login==0.6.3
+psycopg2-binary==2.9.9
 cryptography==41.0.0
 redis==4.5.5
 rq==1.13.0
