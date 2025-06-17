@@ -1,4 +1,4 @@
-Flask==2.3.4               # compatible con Werkzeug 2.x
+Flask==3.1.1               # compatible con Werkzeug 2.x
 Flask-SQLAlchemy==3.0.3
 Flask-Login==0.6.2
 Werkzeug==2.3.7            # alineado con Flask 2.3.x
