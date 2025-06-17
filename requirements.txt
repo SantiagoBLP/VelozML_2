@@ -1,11 +1,10 @@
-Flask==3.1.1               # compatible con Werkzeug 2.x
+Flask==3.1.1
 Flask-SQLAlchemy==3.0.3
-Flask-Login==0.6.2
-Werkzeug==3.1.3            # alineado con Flask 2.3.x
+Flask-Login==0.6.3  # versión compatible con Werkzeug 3.x
 psycopg2-binary==2.9.6
 cryptography==41.0.0
 redis==4.5.5
 rq==1.13.0
 requests==2.32.4
 python-dotenv==1.1.0
-gunicorn==20.1.0           # servidor WSGI
+gunicorn==20.1.0
