@@ -1,7 +1,7 @@
 Flask==3.1.1
 Flask-SQLAlchemy==3.0.3
 Flask-Login==0.6.3
-psycopg[binary]==3.1.8  # psycopg3 precompilado, compatible con Python 3.13
+psycopg==3.2.9            # psycopg 3 puro, compatible con Python 3.13
 cryptography==41.0.0
 redis==4.5.5
 rq==1.13.0
